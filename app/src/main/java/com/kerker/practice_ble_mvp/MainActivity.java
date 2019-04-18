@@ -21,11 +21,11 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import com.clj.fastble.BleManager;
-import com.clj.fastble.scan.BleScanRuleConfig;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
+
+import static com.google.android.gms.common.internal.Preconditions.checkNotNull;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener, Contract.View {
 
@@ -51,14 +51,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         mBtnStartScan.setOnClickListener(this);
 
-        mPresenter = new BlePresenter();
+        mPresenter = new BlePresenter(this);
 
         BleManager.getInstance().init(getApplication());
-        BleManager.getInstance()
-                .enableLog(true)
-                .setReConnectCount(1, 5000)
-                .setConnectOverTime(20000)
-                .setOperateTimeout(5000);
+        mPresenter.initBle();
     }
 
     @Override
@@ -66,20 +62,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onDestroy();
         BleManager.getInstance().disconnectAllDevice();
         BleManager.getInstance().destroy();
-    }
-
-    private void setScanRule() {
-        BleScanRuleConfig scanRuleConfig = new BleScanRuleConfig.Builder()
-                .setServiceUuids(new UUID[]{UUID.fromString("0000fe50-0000-1000-8000-00805f9b34fb")})      // 只扫描指定的服务的设备，可选
-                .setDeviceName(false, null)   // 只扫描指定广播名的设备，可选
-                //        "BTKM-02D7A97CB835"
-                .setDeviceMac(null)                  // 只扫描指定mac的设备，可选
-                //        "02:D7:A9:7C:B8:35"
-//                "02:94:24:67:D7:C1"
-                .setAutoConnect(false)      // 连接时的autoConnect参数，可选，默认false
-                .setScanTimeOut(5000)              // 扫描超时时间
-                .build();
-        BleManager.getInstance().initScanRule(scanRuleConfig);
     }
 
     @Override
@@ -149,7 +131,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             .setCancelable(false)
                             .show();
                 } else {
-                    setScanRule();
+                    mPresenter.setScanRule();
                     mPresenter.scanBle(mSsid, mPwd);
                 }
                 break;
@@ -169,46 +151,27 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (requestCode == REQUEST_CODE_OPEN_GPS) {
             if (checkGPSIsOpen()) {
                 mPresenter.scanBle(mSsid, mPwd);
-                setScanRule();
+                mPresenter.setScanRule();
             }
         }
-    }
-
-    public String getStringToHex(String strValue) {
-        byte byteData[] = null;
-        int intHex = 0;
-        String strHex = "";
-        String strReturn = "";
-        try {
-            byteData = strValue.getBytes("ISO8859-1");
-            for (int intI = 0; intI < byteData.length; intI++) {
-                intHex = (int) byteData[intI];
-                if (intHex < 0)
-                    intHex += 256;
-                if (intHex < 16)
-                    strHex += "0" + Integer.toHexString(intHex).toUpperCase();
-                else
-                    strHex += Integer.toHexString(intHex).toUpperCase();
-            }
-            strReturn = strHex;
-
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return strReturn;
     }
 
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.btn_scan:
-                mSsid = getStringToHex(mEditTxtSsid.getText().toString());
-                mPwd = getStringToHex(mEditTxtPwd.getText().toString());
+                mSsid = mPresenter.getStringToHex(mEditTxtSsid.getText().toString());
+                mPwd = mPresenter.getStringToHex(mEditTxtPwd.getText().toString());
                 checkPermissions();
                 break;
             default:
                 break;
         }
+    }
+
+    @Override
+    public void setPresenter(BlePresenter presenter) {
+        mPresenter = checkNotNull(presenter);
     }
 
     @Override
