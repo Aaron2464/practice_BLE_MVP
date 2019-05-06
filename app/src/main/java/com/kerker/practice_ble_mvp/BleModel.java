@@ -12,7 +12,9 @@ import com.clj.fastble.callback.BleScanCallback;
 import com.clj.fastble.data.BleDevice;
 import com.clj.fastble.exception.BleException;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class BleModel {
 
@@ -22,12 +24,30 @@ public class BleModel {
     private static String w1 = "7731";
     private static String w0 = "7730";
     private static String w9 = "7739";
+    private static DeviceMoveAverageBean mDeviceMoveAverageBean;
+
+    private static Map<String, DeviceMoveAverageBean> mBeanMap = new HashMap<>();
 
     public static void BleScan(final ScanSuccessCallback scanSuccessCallback) {
         BleManager.getInstance().scan(new BleScanCallback() {
             @Override
             public void onScanStarted(boolean success) {
 
+            }
+
+            @Override
+            public void onLeScan(BleDevice bleDevice) {
+                super.onLeScan(bleDevice);
+                Log.d("TEST", "onLeScan BLE bleDevice: " + bleDevice.getName() + " " + bleDevice.getRssi());
+
+                if (mBeanMap == null || !mBeanMap.containsKey(bleDevice.getName())) {
+                    mDeviceMoveAverageBean = new DeviceMoveAverageBean(bleDevice, false, bleDevice.getRssi());
+                    mBeanMap.put(bleDevice.getName(), mDeviceMoveAverageBean);
+                    Log.d("TEST", "onLeScan BLE bleDevice: " + mBeanMap);
+                } else if (mBeanMap.containsKey(bleDevice.getName()) && mBeanMap.get(bleDevice.getName()).getRssiArray().size() <= 5) {
+                    mBeanMap.get(bleDevice.getName()).setRssi(bleDevice.getRssi());
+                    Log.d("TEST", "onLeScan BLE bleDevice: " + mBeanMap.get(bleDevice.getName()).getRssiArray());
+                }
             }
 
             @Override
@@ -45,7 +65,6 @@ public class BleModel {
                     for (int i = 0; i < scanResultList.size(); i++) {
                         if (device.getRssi() < scanResultList.get(i).getRssi()) {
                             device = scanResultList.get(i);
-
                         }
                     }
                     scanSuccessCallback.onSuccess(device);
@@ -86,8 +105,8 @@ public class BleModel {
             @Override
             public void onNotifySuccess() {
                 Log.d("TEST", "notify sucess");
-                new BleAsyncTask(bleDevice,characteristic,CreateHex24(mSsid)).doInBackground();
-                new BleAsyncTask(bleDevice,characteristic,CreateHex24(mPwd)).doInBackground();
+                new BleAsyncTask(bleDevice, characteristic, CreateHex24(mSsid)).doInBackground();
+                new BleAsyncTask(bleDevice, characteristic, CreateHex24(mPwd)).doInBackground();
                 //                             7d969922a951001554175420
 //                            "4557158cc237001553852782"   D7C1
 //                            "77314e55554f4c696e6b5f5341540002540BE3FF"  B835
@@ -106,9 +125,8 @@ public class BleModel {
         });
     }
 
-    private static String CreateHex24(String hex24){
+    private static String CreateHex24(String hex24) {
         String i, j, k;
-        Log.d("TEST", "mSsid: " + hex24.toCharArray().length);
         Log.d("TEST", "mSsid: " + hex24);
         if (hex24.toCharArray().length <= 24) {
             i = hex24;
@@ -160,5 +178,9 @@ public class BleModel {
             }
         }
         return gattService;
+    }
+
+    public static Map<String, DeviceMoveAverageBean> getmBeanMap() {
+        return mBeanMap;
     }
 }

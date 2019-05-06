@@ -85,7 +85,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void checkPermissions() {
         BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (!bluetoothAdapter.isEnabled()) {
-            Toast.makeText(this, getString(R.string.please_open_blue), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, R.string.please_open_blue, Toast.LENGTH_LONG).show();
             return;
         }
 

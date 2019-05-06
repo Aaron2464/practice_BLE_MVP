@@ -4,6 +4,7 @@ import com.clj.fastble.BleManager;
 import com.clj.fastble.data.BleDevice;
 import com.clj.fastble.scan.BleScanRuleConfig;
 
+import java.util.ArrayList;
 import java.util.UUID;
 
 import static com.google.android.gms.common.internal.Preconditions.checkNotNull;
@@ -25,12 +26,23 @@ public class BlePresenter implements Contract.Presenter {
                 .setOperateTimeout(5000);
     }
 
-    public void scanBle(String ssid, String pwd) {
+    public void scanBle(final String ssid, final String pwd) {
         BleModel.setSsidAndPwd(ssid, pwd);
         BleModel.BleScan(new ScanSuccessCallback() {
             @Override
             public void onSuccess(BleDevice device) {
-                BleModel.BleConnect(device);
+                if (BleModel.getmBeanMap().get(device.getName()).getRssiArray().size() < 5) {
+                    setScanRule();
+                    scanBle(ssid, pwd);
+                } else {
+                    if (calculateAverage(BleModel.getmBeanMap().get(device.getName()).getRssiArray()) > -65) {
+                        BleModel.getmBeanMap().get(device.getName()).setScanFlag(true);
+                        BleModel.BleConnect(device);
+                    } else {
+                        setScanRule();
+                        scanBle(ssid, pwd);
+                    }
+                }
             }
 
             @Override
@@ -76,5 +88,17 @@ public class BlePresenter implements Contract.Presenter {
             ex.printStackTrace();
         }
         return strReturn;
+    }
+
+
+    private double calculateAverage(ArrayList<Integer> marks) {
+        Integer sum = 0;
+        if (!marks.isEmpty()) {
+            for (Integer mark : marks) {
+                sum += mark;
+            }
+            return sum.doubleValue() / marks.size();
+        }
+        return sum;
     }
 }
